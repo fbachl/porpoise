@@ -42,7 +42,7 @@ setwd("/home/fbachl/devel/r/porpoise_scotland")
   lilist = lapply(1:nrow(sp), function(k) { Lines(list(Line(rbind(sp[k,],ep[k,]))), ID = k) } )
   splines = SpatialLines(lilist, proj4string = CRS(proj4string(pts)))
   splines = SpatialLinesDataFrame(SpatialLines(lilist, proj4string = CRS(proj4string(pts))), 
-                         data = data.frame(weight = rep(0.5,nlines)))
+                         data = data.frame(weight = lns$Strip_Width/1000))
   
   pts = spTransform(pts, CRS(target.p4s))
   splines = spTransform(splines, CRS(target.p4s))
@@ -90,6 +90,8 @@ setwd("/home/fbachl/devel/r/porpoise_scotland")
       # plot(mesh)
       # lines(porpoise$samplers)
       # all(is.inside(mesh, smp.loc))
+      
+      mesh$crs = CRS(target.p4s)
   
   ####### MAKE DATA SET ####
   

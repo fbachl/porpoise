@@ -180,3 +180,24 @@ library(inlabru)
   pr = predict(rc, coordinates ~ exp(DepthCentered))
   plot(pr)
   
+  
+#' Point process analysis 
+#'=================================================
+#'
+#' Run LGCP inference
+  
+  r = lgcp(porpoise$points, samplers = porpoise$samplers, mesh = porpoise$mesh)
+  
+#' Plot integration weights
+  
+  ggplot() + geom_point(data = data.frame(r$ips), aes(x=X1, y=X2, color = weight) , size = 3)
+  
+#' Predict spatial (log) intensity
+  
+  spint = predict(r, coordinates ~ exp(spde + Intercept))
+  lspint = predict(r, coordinates ~ spde + Intercept)
+  
+#+out.width='50%'
+  
+  plot(spint) + gg(porpoise$points, size = 1) ; plot(lspint) + gg(porpoise$points, size = 1)
+  

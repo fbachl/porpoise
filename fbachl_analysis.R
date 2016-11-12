@@ -28,7 +28,7 @@ library(inlabru)
 
 #' Load data
 
-  setwd("/home/fbachl/devel/r/porpoise_scotland/")
+  setwd("/home/fbachl/devel/git/porpoise/")
   load("porpoise.RData")
   griddata = porpoise$griddata
   
@@ -37,7 +37,7 @@ library(inlabru)
 #+eval=FALSE
 
   library(ggmap)
-  gg.map(griddata) + gg.point(griddata, CRS = CRS("+proj=longlat"))
+  gg.map(griddata) + gm(griddata)
 
 #' Non-discretized data
   ggplot() + gg.mesh(porpoise$mesh) + gg.segment(porpoise$samplers) +gg.point(porpoise$points)

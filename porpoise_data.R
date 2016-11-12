@@ -1,4 +1,4 @@
-setwd("/home/fbachl/devel/r/porpoise_scotland")
+setwd("/home/fbachl/devel/git/porpoise")
 
 ####### SETTINGS ########################
 
@@ -49,52 +49,29 @@ setwd("/home/fbachl/devel/r/porpoise_scotland")
   
   
   ####### MAKE MESH #######################
-  
-  data1 = read.csv("data/sightings_NEODAAS.csv")
-  coords_data = as.matrix(data1[,c("Longitude","Latitude")])
-  plot(data1[,c("Longitude","Latitude")])
-  
-  # data2<-read.csv("coords_sightings_no_out.csv")
-  # points(data2[,c("Longitude","Latitude")], col = "red")
-  
-  coastline<-read.csv("data/coastline_updated.csv", header=TRUE)
-  bnd.coast <- inla.mesh.segment(cbind(coastline$Long, coastline$Lat), is.bnd=1)
-  
-  #plot(coastline, type = "l")
-  
-  bnd1 <- inla.nonconvex.hull(coords_data, 0.05, resolution=100)
-  bnd2 <- inla.nonconvex.hull(coords_data, 0.3)
-  mesh <- inla.mesh.2d(boundary=list(bnd1, list(bnd2, bnd.coast)), max.edge=c(0.05, 0.5), cutoff=0.04)
-  
-  # Transform CRS
-  mesh$loc[,c(1,2)] = coordinates(spTransform(SpatialPoints(mesh$loc[,c(1,2)], CRS("+proj=longlat")), CRS(target.p4s)))
-  ggplot() + gg.mesh(mesh) + geom_point(data = data.frame(porpoise), aes(x=x, y=y, size=Size/eff))
-  
-  # Make new mesh since Laura's mesh does not cover all transects
-  
-      #' Boundary locations
-      bnd.loc = porpoise$mesh$loc[mesh$segm$bnd$idx,c(1,2)]
-      
-      #' refined mesh
-      rmesh = mesh.refine(mesh, refine = list(max.edge = 3))
-      
-      #' Sighting and effort locations
-      smp.loc = do.call(rbind, lapply(coordinates(splines), function(x) x[[1]]))
-      smp.loc = rbind(smp.loc, coordinates(pts))
-      smp.hull = inla.nonconvex.hull(smp.loc, convex = -0.01)
 
-      #' Vertices of new mesh
-      rm.loc = rmesh$loc[,c(1,2)]
-      bnd.new = inla.nonconvex.hull(rbind(rm.loc, smp.loc), convex = -0.007)
-      mesh = inla.mesh.2d(boundary = bnd.new, max.edge = 5)
-      # plot(mesh)
-      # lines(porpoise$samplers)
-      # all(is.inside(mesh, smp.loc))
-      
-      mesh$crs = CRS(target.p4s)
+  coastline<-read.csv("data/Coastline_updated_for_INLAbru.csv", header=TRUE)
+  coordinates(coastline) = c("Long","Lat")
+  proj4string(coastline) = "+proj=longlat"
+  coastline = spTransform(coastline, CRS(target.p4s))
+  plot(coastline)
+  bnd.coast <- inla.mesh.segment(coordinates(coastline), is.bnd=1)
   
-  ####### MAKE DATA SET ####
+  tr.co = do.call(rbind, lapply(coordinates(splines), function(s) s[[1]]))
+  coords_data = rbind(tr.co, coordinates(pts))
   
+  bnd1 <- inla.nonconvex.hull(coords_data, 9)
+  bnd2 <- inla.nonconvex.hull(coords_data, 27)
+  mesh <- inla.mesh.2d(boundary=list(bnd1, list(bnd2, bnd.coast)), min.angle = 25, max.edge=c(4, 10), cutoff=3.8)
+  plot(mesh)
+  mesh$n
+  points(coastline)
+  points(coords_data)
+  lines(splines)
+
+  mesh$crs = CRS(target.p4s)
+  
+  ###### SSAVE EVERYTHING ################
   porpoise = list(mesh = mesh, samplers = splines, points = pts, griddata = porpoise)
   save("porpoise", file = "porpoise.RData")
   

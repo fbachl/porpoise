@@ -71,8 +71,29 @@ setwd("/home/fbachl/devel/git/porpoise")
 
   mesh$crs = CRS(target.p4s)
   
+  
+  
+  ####### Project counts and effort to mesh vertices  #######################
+  # THIS IS A REALLY MESSY HACK
+  r = lgcp(pts, samplers = splines, mesh = mesh)
+  projdata = vertex.projection(mesh, pts, c("Size"))  
+  projips = vertex.projection(mesh, r$ips, c("weight"))  
+  meshdata = data.frame(mesh$loc[,c(1,2)])
+  colnames(meshdata) = c("x","y")
+  meshdata$count = NA
+  meshdata$count[projdata$vertex] = projdata$Size
+  meshdata$area = NA
+  meshdata$area[projips$vertex] = projips$weight
+  meshdata = meshdata[!(is.na(meshdata$count) & is.na(meshdata$area)),]
+  meshdata[is.na(meshdata$count),"count"] = 0
+  meshdata = meshdata[!(meshdata$area == 0),]
+  coordinates(meshdata) = c("x","y")
+  proj4string(meshdata) = proj4string(pts)
+  
+  
+  
   ###### SSAVE EVERYTHING ################
-  porpoise = list(mesh = mesh, samplers = splines, points = pts, griddata = porpoise)
+  porpoise = list(mesh = mesh, samplers = splines, points = pts, griddata = porpoise, meshdata = meshdata)
   save("porpoise", file = "porpoise.RData")
   
   

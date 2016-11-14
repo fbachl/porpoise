@@ -20,11 +20,12 @@ install_git("https://github.com/fbachl/inlabru.git")
 #' Assuming that inlabru is installed:
 library(inlabru)
 
-#' Regression analysis 
-#'=================================================
+#' more stuff
+library(rgdal)
+library(ggmap)
 
-#' Data plots
-#'----------------------------
+#' The data 
+#'=================================================
 
 #' Load data
 
@@ -32,27 +33,81 @@ library(inlabru)
   load("porpoise.RData")
   griddata = porpoise$griddata
   
-#' Plot the data (currently deactived as my rgdal package is not functioning)
-#' 
-#+eval=FALSE
+#' Survey data 
+#'--------------------
 
-  library(ggmap)
-  gg.map(griddata) + gm(griddata)
+ovg = ggplot() + gg(porpoise$mesh) + gg(porpoise$samplers) + gg(porpoise$points)
+ovm = gg.map(porpoise$points, zoom=7) + gm(porpoise$mesh) + gm(porpoise$samplers) + gm(porpoise$points)
 
-#' Non-discretized data
-  ggplot() + gg.mesh(porpoise$mesh) + gg.segment(porpoise$samplers) +gg.point(porpoise$points)
-  
-#' Detections per unit effort and effort per grid cell. It is easy to see that there 
-#' are some cells with an extremely large number of animals per effort.    
-#' 
 #+out.width='50%'
+
+ovg ; ovm
+
+
+#' Grid aggregation
+#'--------------------
+
   
-  ggplot() + gg.mesh(porpoise$mesh) + 
-    geom_point(data = data.frame(griddata), aes(x=x, y=y, color=Size/eff), size = 3) +
-    scale_color_gradientn(colors = topo.colors(100)) ; ggplot() + gg.mesh(porpoise$mesh) + 
+  gd.cnt = ggplot() + gg.mesh(porpoise$mesh) + 
+    geom_point(data = data.frame(griddata), aes(x=x, y=y, color=Size), size = 3) +
+    scale_color_gradientn(colors = topo.colors(100), limits = c(0,20)) ; 
+  
+  gd.eff = ggplot() + gg.mesh(porpoise$mesh) + 
     geom_point(data = data.frame(griddata), aes(x=x, y=y, color=eff), size = 5) +
     scale_color_gradientn(colors = topo.colors(100))
+  
+  gd.dns = ggplot() + gg.mesh(porpoise$mesh) + 
+    geom_point(data = data.frame(griddata), aes(x=x, y=y, color=Size/eff), size = 3) +
+    scale_color_gradientn(colors = topo.colors(100)) ; 
+  
+  gd.ldns = ggplot() + gg.mesh(porpoise$mesh) + 
+    geom_point(data = data.frame(griddata), aes(x=x, y=y, color=log(Size/eff)), size = 3) +
+    scale_color_gradientn(colors = topo.colors(100)) ; 
 
+#' Animal count (left) and effort (right) per grid cell
+#+out.width='50%'
+  gd.cnt ; gd.eff 
+
+#' Density (count/effort) and lod density per cell
+#+out.width='50%'
+  gd.dns ; gd.ldns
+
+
+#' Mesh aggregation 
+#'--------------------
+
+
+  md.cnt = ggplot() + gg(porpoise$mesh) + 
+    geom_point(data.frame(porpoise$meshdata), mapping = aes(x,y,color=count), size = 3) + 
+    scale_color_gradientn(colors = topo.colors(100), limits = c(0,20))
+  md.eff = ggplot() + gg(porpoise$mesh) + 
+    geom_point(data.frame(porpoise$meshdata), mapping = aes(x,y,color=area), size = 3) + 
+    scale_color_gradientn(colors = topo.colors(100))
+  md.dns = ggplot() + gg(porpoise$mesh) + 
+    geom_point(data.frame(porpoise$meshdata), mapping = aes(x,y,color=count/area), size = 3) + 
+    scale_color_gradientn(colors = topo.colors(100))
+  md.ldns = ggplot() + gg(porpoise$mesh) + 
+    geom_point(data.frame(porpoise$meshdata), mapping = aes(x,y,color=log(count/area)), size = 3) +
+    scale_color_gradientn(colors = topo.colors(100))
+
+#+out.width='50%'
+md.cnt ; md.eff
+#+out.width='50%'
+md.dns ;md.ldns
+  
+#' Comparison
+#'--------------------
+
+#+out.width='50%'
+gd.cnt ; md.cnt
+
+#+out.width='50%'
+gd.eff ; md.eff  
+
+
+
+#' Grid regression 
+#'=================================================
 
 #' Poisson Likelihood
 #'----------------------------
@@ -136,7 +191,7 @@ library(inlabru)
 #' Plot using Laura's method (don't evaluate by default) 
 #+eval=FALSE
   
-  source("fbachl_plotting.R")
+  source("plotting.R")
   laura.plot(porpoise$mesh, exp(r1$summary.random$spat$mean + r1$summary.fixed["Intercept","mean"])) ; 
   laura.plot(porpoise$mesh, exp(r2$summary.random$spat$mean + r2$summary.fixed["Intercept","mean"]))
   
@@ -147,6 +202,15 @@ library(inlabru)
   tint = predict(r1, ~ exp(Intercept + spat), integrate = "coordinates")
   plot(tint)
 
+
+#' Comparison
+#'--------------------------------
+  int.g.pois = plot(int) + scale_fill_gradientn(colours = brewer.pal(7,"YlOrRd"),  limits = c(0,6))
+  int.g.nbin1 = plot(int1) + scale_fill_gradientn(colours = brewer.pal(7,"YlOrRd"),  limits = c(0,0.5))
+  int.g.nbin2 = plot(int2) + scale_fill_gradientn(colours = brewer.pal(7,"YlOrRd"),  limits = c(0,0.5))
+
+#+out.width='30%'  
+  int.g.pois ; int.g.nbin1 ; int.g.nbin2
   
   
 #' Covariates
@@ -179,8 +243,45 @@ library(inlabru)
 
   pr = predict(rc, coordinates ~ exp(DepthCentered))
   plot(pr)
+
   
-  
+#' Mesh regression 
+#'=================================================
+#'
+#' 
+#' `porpoise$meshdata` is a projection of the exact surey data to mesh vertices. This
+#' is the triangular equivalent to a grid-projection but makes use of the assumption that
+#' the underlying intensity is linear within each triangle.
+#' 
+#' Poisson regression on this data should give results that are similar to LGCP modeling.
+#' However, instead of Poisson regression we can also perform neg-Binomial regression which
+#' we can compare to the respective result using gridded data.
+#' 
+#' The statistical interpretation of this is not clear!!!!!
+#' 
+
+#' Let's run Poisson and neg-Binomial regression.
+
+r.p.pois = poiss(porpoise$meshdata, model = count + area ~ ., mesh = porpoise$mesh, family = "poisson")
+r.p.nbin = poiss(porpoise$meshdata, model = count + area ~ ., mesh = porpoise$mesh, family = "nbinomial")
+
+
+int.p.pois = predict(r.p.pois, coordinates ~ exp(Intercept + spde))
+int.p.nbin = predict(r.p.nbin, coordinates ~ exp(Intercept + spde))
+
+#' Comparison
+#'* Poisson on mesh projection
+#'* nBin on mesh projection
+#'* nBin on grid
+#'
+#+out.width='30%'
+
+p1 = plot(int.p.pois) + scale_fill_gradientn(colours = brewer.pal(7,"YlOrRd"),  limits = c(0,2.2))
+p2 = plot(int.p.nbin) + scale_fill_gradientn(colours = brewer.pal(7,"YlOrRd"),  limits = c(0,2.2))
+p3 = plot(int2) + scale_fill_gradientn(colours = brewer.pal(7,"YlOrRd"),  limits = c(0,2.2))
+
+p1 ; p2 ; p3
+
 #' Point process analysis 
 #'=================================================
 #'

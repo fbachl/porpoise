@@ -205,12 +205,16 @@ gd.eff ; md.eff
 
 #' Comparison
 #'--------------------------------
-  int.g.pois = plot(int) + scale_fill_gradientn(colours = brewer.pal(7,"YlOrRd"),  limits = c(0,6))
+  int.g.pois = plot(int) + scale_fill_gradientn(colours = brewer.pal(7,"YlOrRd"),  limits = c(0,0.5))
   int.g.nbin1 = plot(int1) + scale_fill_gradientn(colours = brewer.pal(7,"YlOrRd"),  limits = c(0,0.5))
   int.g.nbin2 = plot(int2) + scale_fill_gradientn(colours = brewer.pal(7,"YlOrRd"),  limits = c(0,0.5))
 
 #+out.width='30%'  
   int.g.pois ; int.g.nbin1 ; int.g.nbin2
+
+  #+out.width='30%'  
+  int.g.pois ; int.g.nbin1 ; int.g.nbin2
+  
   
   
 #' Covariates
@@ -233,18 +237,38 @@ gd.eff ; md.eff
 
   plot.marginal(rc, "DepthCentered")
 
-#' Let's predict the combined intensity over space. Nothing fancy going on here.
+#' In order to make predictions we need to be able to evaluate the covariate everywhere.
+#' For that purpose we use 'covariate' to interpolate the data. 'evaluator' will then 
+#' give you a function that can be applied to coordinates x,y and will return the depth
+#' at that position
+
+  depth.cv = covariate(griddata, predictor = DepthCentered, mesh = porpoise$mesh)
+  depth.ev = evaluator(depth.cv)
   
-  pr = predict(rc, coordinates ~ exp(DepthCentered + spat + Intercept))
+#' Predict depth over space (actuall we are not predicting depth here, this is just to check
+#' if the covariate does the right thing)
+
+  pr = predict(rc, coordinates ~ depth.ev(x,y), n = 2)
   plot(pr)
 
-#' What if we only predict the exponential depth effect over space? The values are around 1
-#' everywhere. This makes sense as we figured out that the depth effect is not significant.
+#' Predict the effect of the covariate. Note that the naming is a bit confusing. depth.ev is
+#' the actual depth at some location. DepthCentered is the name of the depth effect, so just
+#' some factor we are looking for.
 
-  pr = predict(rc, coordinates ~ exp(DepthCentered))
+  pr = predict(rc, coordinates ~ DepthCentered * depth.ev(x,y), n = 250)
   plot(pr)
 
+#' Let's predict the spatial intensity with and without the covariate. As the depth effect
+#' is not significant it is not surprising that the patterns are basically identical.
+
+  pr1 = predict(rc, coordinates ~ exp(Intercept + spat + DepthCentered * depth.ev(x,y)))
+  pr2 = predict(rc, coordinates ~ exp(Intercept + spat))
   
+#+out.width='50%'    
+  
+  plot(pr1) ; plot(pr2)
+  
+    
 #' Mesh regression 
 #'=================================================
 #'

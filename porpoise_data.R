@@ -45,8 +45,9 @@ setwd("/home/fbachl/devel/git/porpoise")
                          data = data.frame(weight = lns$Strip_Width/1000))
   
   pts = spTransform(pts, CRS(target.p4s))
+  coordnames(pts) = c("x","y")
   splines = spTransform(splines, CRS(target.p4s))
-  
+  coordnames(splines) = c("x","y")
   
   ####### MAKE MESH #######################
 

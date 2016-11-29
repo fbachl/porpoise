@@ -326,3 +326,66 @@ p1 ; p2 ; p3
   
   plot(spint) + gg(porpoise$points, size = 1) ; plot(lspint) + gg(porpoise$points, size = 1)
   
+  
+#'### Covariates
+#'
+#' For this example I will use the covariates as stored in the `griddata` object. Ideally, I would
+#' have the original data and apply the following procedure. Let's start with interpolating
+#' the SST data.
+
+  SSTdata = covariate(griddata, predictor = SST, mesh = porpoise$mesh)
+  
+#+out.width='50%'
+  pl1 = ggplot() + gg(porpoise$mesh) + gg(griddata, mapping = aes(x,y,color=SST), size = 4)
+  pl2 = plot(SSTdata) + gg(porpoise$mesh) + gg(porpoise$points) + gg(porpoise$samplers)
+  pl1 ; pl2
+  
+#' The interpolant can now be used to create functions that return the SST value at any point
+#' in space.
+
+  local.sst = evaluator(SSTdata)
+  mean.sst = evaluator(SSTdata, get.smean) # Returns spatial mean
+  centered.sst = function(...) local.sst(...) - mean.sst(...)
+  # For example
+  centered.sst(x=-150, y=6000)
+  
+#' Unfortunately there is currently a problem with using covariates within the predictor. It works but
+#' it is extremely slow. A workaround is to evaluate the covariates at the detection and integration points
+#' beforehand. For that purpose we need a covariate function that acts on data frames:
+   
+  centered.sst2 = function(df) centered.sst(x=df$x, y=df$y)
+  
+#' Now, let's build a model!
+  
+  mdl = ~ sst.eff + 
+    g(spat, model = inla.spde2.matern(porpoise$mesh), mesh = porpoise$mesh) + 
+    Intercept - 1
+  
+#' ... and a predictor. Note how `csst` is used instead of the more straight forward `centered.sst(x,y)` syntax.  
+  prd = coordinates ~ sst.eff * csst + spat + Intercept -1
+  
+#' Via the `append` command we let `lgcp` know that it should evaluate centered.sst2 for all points and
+#' append the respective values to the data frame used during inference. This makes `csst` a valid
+#' expression in the predictor. 
+
+  r = lgcp(points = porpoise$points, 
+           model = mdl, 
+           predictor = prd, 
+           mesh = porpoise$mesh, 
+           n = 1,
+           append = list(csst = centered.sst2))
+
+#' Let's see if the effect is significant: Nope!
+  plot.marginal(r, "sst.eff")
+  r$summary.fixed
+  
+  
+#' Predictions work as usual. This will predict the joint intensity:
+  pr = predict(r, coordinates ~ exp(sst.eff * centered.sst(x,y) + spat + Intercept))
+  plot(pr)
+
+#' And this is only SPDE plus intercept  
+  pr2 = predict(r, coordinates ~ exp(spat + Intercept))
+  plot(pr2)
+
+  

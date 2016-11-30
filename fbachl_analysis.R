@@ -116,7 +116,7 @@ gd.eff ; md.eff
 #' 
 #+warning=FALSE,results='hide'
 
-  rp = poiss(griddata, Size + eff ~ ., mesh = porpoise$mesh)
+  rp = bru(griddata, predictor = Size ~ spde + Intercept, mesh = porpoise$mesh, E = griddata$eff, linear = TRUE)
 
 #'### Results
 
@@ -148,18 +148,20 @@ gd.eff ; md.eff
 #'
 #' Model 1: PCprior
   
-  fml1 = Size + eff ~ g(spat, model=inla.spde2.pcmatern(porpoise$mesh, prior.range=c(20, 0.1), prior.sigma=c(100, 0.1)), mesh = porpoise$mesh)
+  mdl1 = ~ spat(model=inla.spde2.pcmatern(porpoise$mesh, prior.range=c(20, 0.1), prior.sigma=c(100, 0.1)), mesh = porpoise$mesh) +
+           Intercept - 1
   
 #' Model 2: Default SPDE parameterization
   
-  fml2 = Size + eff ~ g(spat, model=inla.spde2.matern(porpoise$mesh), mesh = porpoise$mesh)
+  mdl2 = ~ spat(model=inla.spde2.matern(porpoise$mesh), mesh = porpoise$mesh) +
+           Intercept - 1
 
 #' Run inference
 #' 
 #+warning=FALSE,results='hide'
   
-  r1 = poiss(griddata, fml1, family = "nbinomial")
-  r2 = poiss(griddata, fml2, family = "nbinomial")
+  r1 = bru(griddata, model = mdl1, predictor = Size ~ spat + Intercept, E = griddata$eff, linear = TRUE, family = "nbinomial")
+  r2 = bru(griddata, model = mdl2, predictor = Size ~ spat + Intercept, E = griddata$eff, linear = TRUE, family = "nbinomial")
 
   
 #'### Results
@@ -229,8 +231,8 @@ gd.eff ; md.eff
 #'   
 #+warning=FALSE,results='hide'
 
-  fml = Size + eff ~ g(spat, model=inla.spde2.matern(porpoise$mesh), mesh = porpoise$mesh) + DepthCentered
-  rc = poiss(griddata, fml, family = "nbinomial")
+  mdl = ~ spat(model=inla.spde2.matern(porpoise$mesh), mesh = porpoise$mesh) + DepthCentered + Intercept - 1
+  rc = bru(griddata, model = mdl, predictor = Size ~ spat + Intercept + DepthCentered, E = griddata$eff, linear = TRUE, family = "nbinomial")
   
 #' Use `plot.marginal` to inspect the posterior of the depth effect. The Predictive interval covers 0,
 #' so the effect is not significant:
@@ -286,8 +288,10 @@ gd.eff ; md.eff
 
 #' Let's run Poisson and neg-Binomial regression.
 
-r.p.pois = poiss(porpoise$meshdata, model = count + area ~ ., mesh = porpoise$mesh, family = "poisson")
-r.p.nbin = poiss(porpoise$meshdata, model = count + area ~ ., mesh = porpoise$mesh, family = "nbinomial")
+r.p.pois = bru(porpoise$meshdata, predictor = count ~ spde + Intercept, mesh = porpoise$mesh, 
+               E = porpoise$meshdata$area, linear = TRUE, family = "poisson")
+r.p.nbin = bru(porpoise$meshdata, predictor = count ~ spde + Intercept, mesh = porpoise$mesh, 
+               E = porpoise$meshdata$area, linear = TRUE, family = "nbinomial")
 
 
 int.p.pois = predict(r.p.pois, coordinates ~ exp(Intercept + spde))
